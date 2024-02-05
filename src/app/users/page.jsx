@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Pagination from "../components/Pagination";
-import { createUser, deleteUser, fetchUsers, updateUser } from "../store/api";
+import { createUser, deleteUser, fetchUsers, updateUser } from "../api/api";
 
 const UsersPage = () => {
   const [users, setUsers] = useState([]);
@@ -120,14 +120,14 @@ const UsersPage = () => {
       <div className="flex justify-end mb-4">
         <button
           onClick={() => openModal(null)}
-          className="bg-slate-700 text-slate-300 hover:bg-sky-400 hover:text-white font-semibold px-4 py-2 rounded-full"
+          className="bg-slate-700 text-slate-300 hover:bg-sky-300 hover:text-white font-semibold px-4 py-2 rounded-full"
         >
           Create User
         </button>
       </div>
       <input
         type="text"
-        placeholder="Search Users"
+        placeholder="Search"
         value={searchText}
         onChange={(e) => setSearchText(e.target.value)}
         className="bg-slate-700 text-slate-300 mb-4 px-4 py-2 rounded-full w-full"

@@ -2,7 +2,7 @@
 
 import Pagination from "./components/Pagination";
 import { useState, useEffect } from "react";
-import { fetchPosts, fetchComments } from "./store/api";
+import { fetchPosts, fetchComments } from "./api/api";
 
 const Home = () => {
   const [posts, setPosts] = useState([]);
@@ -40,21 +40,16 @@ const Home = () => {
   const currentPosts = posts.slice(indexOfFirstPost, indexOfLastPost);
 
   const paginate = (pageNumber) => {
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-    }
+    const newPage = Math.max(1, Math.min(pageNumber, totalPages));
+    setCurrentPage(newPage);
   };
 
   const nextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
+    setCurrentPage((prevPage) => Math.min(prevPage + 1, totalPages));
   };
 
   const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
+    setCurrentPage((prevPage) => Math.max(prevPage - 1, 1));
   };
 
   const openModal = (post) => {

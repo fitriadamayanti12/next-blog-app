@@ -5,6 +5,12 @@ const Pagination = ({
   nextPage,
   prevPage,
 }) => {
+  const handleNextPage = () => {
+    // Ensure not to go beyond the total number of pages
+    if (currentPage < totalPages) {
+      nextPage(currentPage + 1);
+    }
+  };
   return (
     <div className="mt-4">
       <ul className="flex justify-center items-center">
@@ -32,7 +38,7 @@ const Pagination = ({
         ))}
         <li>
           <button
-            onClick={nextPage}
+            onClick={handleNextPage}
             className="bg-slate-800 text-slate-300 hover:bg-slate-300 hover:text-slate-950 font-semibold px-4 py-2 m-1 rounded-full"
           >
             Next
