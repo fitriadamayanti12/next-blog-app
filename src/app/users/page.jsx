@@ -127,7 +127,7 @@ const UsersPage = () => {
       </div>
       <input
         type="text"
-        placeholder="Search"
+        placeholder="Search Users"
         value={searchText}
         onChange={(e) => setSearchText(e.target.value)}
         className="bg-slate-700 text-slate-300 mb-4 px-4 py-2 rounded-full w-full"
