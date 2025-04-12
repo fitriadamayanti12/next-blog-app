@@ -24,8 +24,8 @@ jobs:
       - name : Copy Reports to Reports Directory 
         run : |
           mkdir -p reports  # Create the reports directory if it doesn't exist.
-          cp report_html.html reports/  # Copy the HTML report to the reports directory.
-          cp report_json.json reports/  # Copy the JSON report to the reports directory.
+          cp next-blog-report.html reports/  # Copy the HTML report to the reports directory.
+          cp next-blog-report.json reports/  # Copy the JSON report to the reports directory.
 
       # Uploading both JSON and HTML reports from the reports directory as artifacts.
       - name : Upload Report Artifacts 
