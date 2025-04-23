@@ -47,4 +47,4 @@ jobs:
               ]
             }
         env:
-          SLACK_WEBHOOK_URL: https://hooks.slack.com/services/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
+          SLACK_WEBHOOK_URL: https://hooks.slack.com/services/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
