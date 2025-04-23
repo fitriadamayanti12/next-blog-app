@@ -31,8 +31,7 @@ jobs:
         if: env.CRITICAL_COUNT != '0'
         uses: 8398a7/action-slack@v3
         with:
-          status: failure
-          fields: repo,workflow,job
+          status: custom
           custom_payload: |
             {
               "attachments": [
