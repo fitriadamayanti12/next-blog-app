@@ -25,12 +25,23 @@ jobs:
         run: |
           CRITICAL_COUNT=$(jq '[.[] | select(.Severity=="Critical" or .Severity=="High")] | length' reports/semgrep-report-blog-app.json)
           echo "Found $CRITICAL_COUNT critical/high issues"
-          echo "::set-output name=critical_count::$CRITICAL_COUNT"
+          echo "CRITICAL_COUNT=$CRITICAL_COUNT" >> $GITHUB_ENV
       
-      - name: Send Slack Notification if High or Critical Issues Found
-        run: |
-          if [ "$CRITICAL_COUNT" -ne 0 ]; then
-            curl -X POST -H 'Content-type: application/json' --data '{"text":"Found '"$CRITICAL_COUNT"' critical/high issues in Semgrep scan."}' ${{ secrets.SLACK_WEBHOOK_URL }}
-          fi
+      - name: Notify Slack If Vulnerabilities Found
+        if: env.CRITICAL_COUNT != '0'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          fields: repo,workflow,job
+          custom_payload: |
+            {
+              "attachments": [
+                {
+                  "color": "#FF0000",
+                  "title": "Critical Vulnerabilities Detected by Semgrep",
+                  "text": "${{ github.repository }} has ${{ env.CRITICAL_COUNT }} high/critical issues."
+                }
+              ]
+            }
         env:
           SLACK_WEBHOOK_URL: https://hooks.slack.com/services/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
