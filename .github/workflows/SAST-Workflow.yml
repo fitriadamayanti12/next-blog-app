@@ -1,0 +1,52 @@
+name: Semgrep Scan and PR Block
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  semgrep-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Read Semgrep Report
+        id: read_report
+        run: |
+          # Baca file laporan Semgrep
+          report=$(cat reports/semgrep-report-blog-app.json)
+          echo "report=$report" >> $GITHUB_ENV
+
+      - name: Check for High or Critical Severity
+        id: check_severity
+        run: |
+          # Periksa severity kerentanan
+          high_critical_found=false
+          report=$(echo "$report" | jq -c '.[] | select(.Severity == "High" or .Severity == "Critical")')
+          if [ -n "$report" ]; then
+            high_critical_found=true
+          fi
+          echo "high_critical_found=$high_critical_found" >> $GITHUB_ENV
+
+      - name: Block PR if High or Critical Severity Found
+        if: steps.check_severity.outputs.high_critical_found == 'true'
+        run: |
+          echo "High or Critical severity vulnerabilities found. Blocking PR."
+          exit 1
+
+      - name: Send Slack Notification
+        if: steps.check_severity.outputs.high_critical_found == 'true'
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_COLOR: '#FF0000'
+          SLACK_MESSAGE: 'High or Critical severity vulnerabilities found in PR. Blocking PR.'
+          SLACK_TITLE: 'Security Alert'
+          SLACK_USERNAME: 'GitHub Actions'
+          SLACK_WEBHOOK: https://hooks.slack.com/services/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
