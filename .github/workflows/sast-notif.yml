@@ -45,4 +45,4 @@ jobs:
             }' $SLACK_WEBHOOK_URL
           fi
         env:
-          SLACK_WEBHOOK_URL: https://hooks.slack.com/services/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
+          SLACK_WEBHOOK_URL: https://hooks.slack.com/services/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
