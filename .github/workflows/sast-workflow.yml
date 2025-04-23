@@ -1,59 +1,83 @@
 name: Semgrep Scan and PR Block
 
 on:
-  push:
-    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
 
 permissions:
   contents: read
-  pull-requests: write
+  statuses: write # untuk update commit status
 
 jobs:
   semgrep-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Install jq
+      
+      - name: Install jq and curl
         run: sudo apt-get update && sudo apt-get install -y jq curl
-
+      
       - name: Read Semgrep Report and Check Severity
-        id: check_severity
-        run: |
-          echo "Reading report from reports/semgrep-report-blog-app.json"
-          if [[ ! -f reports/semgrep-report-blog-app.json ]]; then
-            echo "Report file not found!"
-            exit 1
-          fi
-
-          # Hitung jumlah temuan High dan Critical severity dalam report JSON  
-          high_count=$(jq '[.[] | select(.Severity == "High")] | length' reports/semgrep-report-blog-app.json)
-          critical_count=$(jq '[.[] | select(.Severity == "Critical")] | length' reports/semgrep-report-blog-app.json)
-
-          echo "High severity findings count = $high_count"
-          echo "Critical severity findings count = $critical_count"
-
-          total=$((high_count + critical_count))
-          
-          # Set output untuk langkah berikutnya  
-          echo "::set-output name=total_findings::$total"
-
-      - name: Send Slack Notification if High or Critical Findings Found
-        if: steps.check_severity.outputs.total_findings != '0'
-        env:
-          SLACK_WEBHOOK_URL: https://hooks.slack.com/services/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
-        run: |
-          payload="{
-            \"text\": \":warning::warning::warning:\n*Semgrep Scan Alert*\nFound *${{ steps.check_severity.outputs.total_findings }}* High/Critical vulnerabilities in the latest scan.\nPlease review the report at your earliest convenience.\"
-           }"
-          
-           curl -X POST --data-urlencode "payload=$payload" "$SLACK_WEBHOOK_URL"
-
-      - name : Fail workflow if High or Critical Findings Found to block PR merge 
-        if : steps.check_severity.outputs.total_findings != '0'
+        id : check_severity
         run : |
-           echo "::error ::Found high or critical vulnerabilities, blocking merge."
-           exit 1
+          CRITICAL_COUNT=$(jq '[.[] | select(.Severity=="Critical" or .Severity=="High")] | length' reports/semgrep-report-blog-app.json)
+          echo "Found $CRITICAL_COUNT critical/high issues"
+          echo "::set-output name=critical_count::$CRITICAL_COUNT"
+      
+      - name : Set Commit Status Based on Severity 
+        if : always()
+        uses : actions/github-script@v6 
+        with :
+          github-token : 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
+          script : |
+            const criticalCount = parseInt('${{ steps.check_severity.outputs.critical_count }}');
+            const sha = context.payload.pull_request.head.sha;
+            if (criticalCount > 0) {
+              await github.repos.createCommitStatus({
+                owner : context.repo.owner,
+                repo : context.repo.repo,
+                sha,
+                state :'failure',
+                description :'Semgrep found high or critical vulnerabilities',
+                context :'semgrep/security-scan'
+              });
+              core.setOutput('blocked', 'true');
+            } else {
+              await github.repos.createCommitStatus({
+                owner : context.repo.owner,
+                repo : context.repo.repo,
+                sha,
+                state :'success',
+                description :'No high or critical vulnerabilities found by Semgrep',
+                context :'semgrep/security-scan'
+              });
+              core.setOutput('blocked', 'false');
+            }
+      
+      - name : Notify Slack If Vulnerabilities Found 
+        if   steps.check_severity.outputs.critical_count != '0'
+        uses   8398a7/action-slack@v3  
+        with :
+           status   = failure   
+           fields   = repo,workflow,job,commit   
+           custom_payload   = |
+             {
+               "attachments": [
+                 {
+                   "color": "#FF0000",
+                   "title": "Critical Vulnerabilities Detected by Semgrep",
+                   "text": "${{ github.repository }} has ${{
+                     steps.check_severity.outputs.critical_count }} high/critical issues.",
+                   "fields": [
+                     { "title": "PR", "value": "${{ github.event.pull_request.html_url }}" }
+                   ]
+                 }
+               ]
+             }
+         env :
+           SLACK_WEBHOOK_URL   = https://hooks.slack.com/services/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
