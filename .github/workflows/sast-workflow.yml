@@ -1,0 +1,64 @@
+name: Semgrep Scan and PR Block
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  semgrep-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Read Semgrep Report
+        id: read_report
+        run: |
+          # Baca file laporan Semgrep
+          report=$(cat reports/semgrep-report-blog-app.json)
+          echo "Report: $report"
+          echo "::set-output name=report::$report"
+
+      - name: Parse Semgrep Report
+        id: parse_report
+        run: |
+          # Parsing laporan untuk mendapatkan severity High dan Critical
+          high_count=$(echo "${{ steps.read_report.outputs.report }}" | jq -r '[.[] | select(.Severity == "High")] | length')
+          critical_count=$(echo "${{ steps.read_report.outputs.report }}" | jq -r '[.[] | select(.Severity == "Critical")] | length')
+          echo "High Vulnerabilities: $high_count"
+          echo "Critical Vulnerabilities: $critical_count"
+          echo "::set-output name=high_count::$high_count"
+          echo "::set-output name=critical_count::$critical_count"
+
+      - name: Block PR if High or Critical Vulnerabilities Found
+        if: github.event_name == 'pull_request' && (steps.parse_report.outputs.high_count > 0 || steps.parse_report.outputs.critical_count > 0)
+        run: |
+          echo "Blocking PR due to High or Critical vulnerabilities."
+          exit 1
+
+      - name: Upload Semgrep Report as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: semgrep-report
+          path: reports/semgrep-report-blog-app.json
+
+      - name: Send Slack Notification if High or Critical Vulnerabilities Found
+        if: steps.parse_report.outputs.high_count > 0 || steps.parse_report.outputs.critical_count > 0
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_COLOR: '#FF0000'
+          SLACK_MESSAGE: |
+            **Semgrep Scan Results:**
+            - High Vulnerabilities: ${{ steps.parse_report.outputs.high_count }}
+            - Critical Vulnerabilities: ${{ steps.parse_report.outputs.critical_count }}
+            - [Download Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)
+          SLACK_WEBHOOK: https://hooks.slack.com/services/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
