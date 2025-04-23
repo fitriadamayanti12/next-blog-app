@@ -27,24 +27,22 @@ jobs:
           echo "Found $CRITICAL_COUNT critical/high issues"
           echo "::set-output name=critical_count::$CRITICAL_COUNT"
       
-      - name: Notify Slack If Vulnerabilities Found 
-        if: ${{ steps.check_severity.outputs.critical_count > 0 }}
-        uses: 8398a7/action-slack@v3  
-        with:
-          status: failure   
-          fields: repo,workflow,job,commit   
-          custom_payload: |
+      - name: Notify Slack If Vulnerabilities Found
+        run: |
+          if [ "${{ steps.check_severity.outputs.critical_count }}" -ne 0 ]; then
+            curl -X POST -H 'Content-type: application/json' --data '
             {
               "attachments": [
                 {
                   "color": "#FF0000",
                   "title": "Critical Vulnerabilities Detected by Semgrep",
-                  "text": "${{ github.repository }} has ${{ steps.check_severity.outputs.critical_count }} high/critical issues.",
+                  "text": "'${{ github.repository }} has ${{ steps.check_severity.outputs.critical_count }} high/critical issues.",
                   "fields": [
-                    { "title": "PR", "value": "${{ github.event.pull_request.html_url }}" }
+                    { "title": "PR", "value": "'${{ github.event.pull_request.html_url }}'" }
                   ]
                 }
               ]
-            }
+            }' ${{ secrets.SLACK_WEBHOOK_URL }}
+          fi
         env:
           SLACK_WEBHOOK_URL: https://hooks.slack.com/services/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
